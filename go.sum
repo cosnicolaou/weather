@@ -41,6 +41,8 @@ cloudeng.io/webapi/operations v0.0.0-20250115163522-2e8054cafced h1:Y7V9wMeyuJwP
 cloudeng.io/webapi/operations v0.0.0-20250115163522-2e8054cafced/go.mod h1:uGPvy9FlXotcdATf7+b2lZNGDVfRe1C7MqS3wBVGeq0=
 cloudeng.io/webapi/operations v0.0.0-20250115235233-c9333ec7ce00 h1:f6Gb2hWgGN6dajyNVwruivRRbIXnIRWymVD5xCE81dA=
 cloudeng.io/webapi/operations v0.0.0-20250115235233-c9333ec7ce00/go.mod h1:uGPvy9FlXotcdATf7+b2lZNGDVfRe1C7MqS3wBVGeq0=
+cloudeng.io/webapi/operations v0.0.0-20250116040431-a16229cf0935 h1:nBMi5vXrtWYkhifO1PpinT3pUCuodMou3A3HOl+D1Xc=
+cloudeng.io/webapi/operations v0.0.0-20250116040431-a16229cf0935/go.mod h1:uGPvy9FlXotcdATf7+b2lZNGDVfRe1C7MqS3wBVGeq0=
 cloudeng.io/webapi/webapitestutil v0.0.0-20250115163522-2e8054cafced h1:EMd0bCqObKJ/zGJhxjS+5niY18WSdFYcn29MyM/y6+0=
 cloudeng.io/webapi/webapitestutil v0.0.0-20250115163522-2e8054cafced/go.mod h1:cMF03lbZy2+oWkCUD3CPtKzxClTGjqbIyk2E/IMVQtA=
 github.com/cosnicolaou/automation v0.0.0-20250115011416-ec192d8af4dd h1:q52JyLZRhjC0fPunIKj4lhAKV2f9Ljapzna6CwvzTzo=
