@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -30,7 +31,7 @@ const (
 )
 
 const (
-	APIHost = "api.weather.gov"
+	APIHost = "https://api.weather.gov"
 )
 
 type gridPointForecasts struct {
@@ -69,33 +70,44 @@ type Forecasts struct {
 type API struct {
 	gridEP *operations.Endpoint[gridPointResponse]
 	opts   []operations.Option
+	host   string
 }
 
 func NewAPI(opts ...operations.Option) *API {
 	return &API{
 		opts:   opts,
+		host:   APIHost,
 		gridEP: operations.NewEndpoint[gridPointResponse](opts...),
 	}
 }
+func (a *API) SetHost(host string) {
+	a.host = host
+}
 
 func (a *API) GetForecast(ctx context.Context, lat, long float64) (Forecasts, error) {
-	var u url.URL
-	u.Scheme = "https"
-	u.Host = APIHost
-	u.Path = fmt.Sprintf("/points/%f,%f", lat, long)
-	gpr, _, _, err := a.gridEP.Get(ctx, u.String())
+	//var u url.URL
+	//	u.Scheme = "https"
+	//	u.Host = a.host
+	//	u.Path = fmt.Sprintf("%s/points/%f,%f", a.host, lat, long)
+	u, err := url.Parse(fmt.Sprintf("%s/points/%f,%f", a.host, lat, long))
+	if err != nil {
+		return Forecasts{}, fmt.Errorf("failed to parse URL: %w", err)
+	}
+	gpr, buf, _, err := a.gridEP.Get(ctx, u.String())
 	if err != nil {
 		return Forecasts{}, fmt.Errorf("%v: grid point lookup failed: %w", u.String(), err)
 	}
+	os.WriteFile("gridpoint.json", buf, 0644)
 	fcep := operations.NewEndpoint[forecastResponse](a.opts...)
 	up, err := url.Parse(gpr.Properties.Forecast)
 	if err != nil {
 		return Forecasts{}, fmt.Errorf("%v: failed to parse forecast URL: %w", gpr.Properties.Forecast, err)
 	}
-	frc, _, _, err := fcep.Get(ctx, up.String())
+	frc, buf, _, err := fcep.Get(ctx, up.String())
 	if err != nil {
 		return Forecasts{}, fmt.Errorf("%v: forecast download failed: %w", u.String(), err)
 	}
+	os.WriteFile("forecast.json", buf, 0644)
 	fc := Forecasts{
 		Lat:   lat,
 		Long:  long,
@@ -132,4 +144,13 @@ func estimateOpaqueCloudCoverage(shortForecast string) OpaqueCloudCoverage {
 		return Snow
 	}
 	return UnknownOpaqueCloudCoverage
+}
+
+func (fc Forecasts) ForTime(when time.Time) (Forecast, bool) {
+	for _, f := range fc.Periods {
+		if f.StartTime.Before(when) && f.EndTime.After(when) {
+			return f, true
+		}
+	}
+	return Forecast{}, false
 }

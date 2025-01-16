@@ -1,0 +1,14 @@
+name: go-linux
+
+on:   
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    uses: cloudengio/.github/.github/workflows/go-test.yml@main
+
+  lint:
+    uses: cloudengio/.github/.github/workflows/go-lint.yml@main

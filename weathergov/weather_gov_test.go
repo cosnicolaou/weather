@@ -6,15 +6,51 @@ package weathergov_test
 
 import (
 	"context"
+	"fmt"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
+	"cloudeng.io/webapi/webapitestutil"
 	"github.com/cosnicolaou/weather/weathergov"
 )
 
+func writeFile(name string, w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json")
+	f, err := os.Open(filepath.Join("testdata", name))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer f.Close()
+	io.Copy(w, f)
+}
+
+func runMock() *httptest.Server {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains("points", r.URL.Path) {
+			writeFile("gridpoint.json", w)
+		}
+		if strings.Contains("forecast", r.URL.Path) {
+			writeFile("forecast.json", w)
+		}
+	})
+	return webapitestutil.NewServer(handler)
+}
+
 func TestLookup(t *testing.T) {
 	ctx := context.Background()
+	srv := runMock()
+	defer srv.Close()
+
+	fmt.Printf("server url: %s\n", srv.URL)
 	api := weathergov.NewAPI()
+	api.SetHost(srv.URL)
 	gp, err := api.GetForecast(ctx, 39.7456, -97.0892)
 	if err != nil {
 		t.Fatalf("failed to get forecast: %v", err)
