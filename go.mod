@@ -3,7 +3,7 @@ module github.com/cosnicolaou/weather
 go 1.23.1
 
 require (
-	cloudeng.io/webapi/clients/nws v0.0.0-20250115234730-220e0a6d154d
+	cloudeng.io/webapi/clients/nws v0.0.0-20250116040431-a16229cf0935
 	cloudeng.io/webapi/operations v0.0.0-20250115235233-c9333ec7ce00
 	github.com/cosnicolaou/automation v0.0.0-20250115011416-ec192d8af4dd
 )

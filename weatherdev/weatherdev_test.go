@@ -6,7 +6,6 @@ package weatherdev_test
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"strings"
 	"testing"
@@ -18,6 +17,18 @@ import (
 	"github.com/cosnicolaou/automation/devices"
 	"github.com/cosnicolaou/weather/weatherdev"
 )
+
+func invokeCondition(t *testing.T, dev *weatherdev.Forecast, cond string, when time.Time, arg string) bool {
+	ctx := context.Background()
+	cover, err := dev.Conditions()[cond](ctx, devices.OperationArgs{
+		Due:  when,
+		Args: []string{arg},
+	})
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	return cover
+}
 
 func TestMaxCloudCoverage(t *testing.T) {
 	ctx := context.Background()
@@ -41,7 +52,6 @@ func TestMaxCloudCoverage(t *testing.T) {
 
 	logOut := &strings.Builder{}
 	logger := slog.New(slog.NewJSONHandler(logOut, nil))
-	writeOut := &strings.Builder{}
 	ws := weatherdev.NewService(devices.Options{
 		Logger: logger,
 	})
@@ -53,34 +63,57 @@ func TestMaxCloudCoverage(t *testing.T) {
 		t.Fatalf("failed to get forecasts: %v", err)
 	}
 
-	dev := weatherdev.NewForecast(devices.Options{
-		Logger: logger,
-	})
+	dev := weatherdev.NewForecast(devices.Options{})
 	dev.SetController(ws)
 
-	isItCloudy := dev.Conditions()["maxCloudCover"]
+	allArgs := []string{"sunny", "clear", "mostly clear", "mostly sunny", "partly cloudy",
+		"partly sunny", "mostly cloudy", "cloudy"}
 
-	allArgs := []string{"sunny", "clear", "mostly clear", "mostly sunny", "partly cloudy", "mostly sunny", "mostly cloudy", "cloudy"}
-
-	for i, fc := range forecast.Periods {
+	for _, fc := range forecast.Periods {
 		when := fc.StartTime
-		for _, arg := range allArgs {
-			ok, err := isItCloudy(ctx, devices.OperationArgs{
-				Due:    when,
-				Writer: writeOut,
-				Args:   []string{arg}})
-			if err != nil {
-				t.Fatalf("%v: err: %v", when, err)
-			}
-			var expected bool
+		for i, arg := range allArgs {
+			maxCover := invokeCondition(t, dev, "max-cloud-cover", when, arg)
+			minCover := invokeCondition(t, dev, "min-cloud-cover", when, arg)
+			exactCover := invokeCondition(t, dev, "cloud-cover", when, arg)
+
+			var maxOpacity, minOpacity bool
 			forecastOpacity := nws.CloudOpacityFromShortForecast(fc.ShortForecast)
 			argOpacity := nws.CloudOpacityFromShortForecast(arg)
 			if forecastOpacity <= argOpacity {
-				expected = true
+				maxOpacity = true
 			}
-			if got, want := ok, expected; got != want {
-				fmt.Printf("period: %v, forecast: %q: arg: %q got %v, want %v\n", i, fc.ShortForecast, arg, got, want)
+			if forecastOpacity >= argOpacity {
+				minOpacity = true
+			}
+			if got, want := maxCover, maxOpacity; got != want {
 				t.Errorf("period: %v, forecast: %q: arg: %q got %v, want %v", i, fc.ShortForecast, arg, got, want)
+			}
+			if got, want := minCover, minOpacity; got != want {
+				t.Errorf("period: %v, forecast: %q: arg: %q got %v, want %v", i, fc.ShortForecast, arg, got, want)
+			}
+
+			if got, want := exactCover, maxOpacity == minOpacity; got != want {
+				t.Errorf("period: %v, forecast: %q: arg: %q got %v, want %v", i, fc.ShortForecast, arg, got, want)
+			}
+
+			mostlySunny := invokeCondition(t, dev, "mostly-sunny", when, arg)
+			partlyCloudy := invokeCondition(t, dev, "partly-cloudy", when, arg)
+			partlySunny := invokeCondition(t, dev, "partly-cloudy", when, arg)
+			mostlyCloudy := invokeCondition(t, dev, "mostly-cloudy", when, arg)
+
+			if got, want := partlyCloudy, partlySunny; got != want {
+				t.Errorf("period: %v, forecast: %q: arg: %q got %v, want %v", i, fc.ShortForecast, arg, got, want)
+			}
+
+			opc := nws.CloudOpacityFromShortForecast(fc.ShortForecast)
+			if opc == nws.UnknownOpaqueCloudCoverage {
+				t.Fatalf("unknown cloud cover: %q", arg)
+			}
+			if got, want := mostlySunny, opc <= nws.MostlyClearSunny; got != want {
+				t.Errorf("period: %v, forecast: %q: mostlySunny got %v, want %v", i, fc.ShortForecast, got, want)
+			}
+			if got, want := mostlyCloudy, opc >= nws.MostlyCloudy; got != want {
+				t.Errorf("period: %v, forecast: %q: mostlyCloudy got %v, want %v", i, fc.ShortForecast, got, want)
 			}
 		}
 	}
@@ -88,5 +121,4 @@ func TestMaxCloudCoverage(t *testing.T) {
 	if got, want := srv.ForecastCalls(), 1; got != want {
 		t.Errorf("got %v, want %v", got, want)
 	}
-
 }
