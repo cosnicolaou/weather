@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"strings"
 	"sync"
@@ -16,6 +17,32 @@ import (
 	"cloudeng.io/webapi/clients/nws"
 	"github.com/cosnicolaou/automation/devices"
 )
+
+func NewController(typ string, opts devices.Options) (devices.Controller, error) {
+	if typ == "weather.gov" {
+		return NewService(opts), nil
+	}
+	return nil, fmt.Errorf("unsupported weather service %s", typ)
+}
+
+func NewDevice(typ string, opts devices.Options) (devices.Device, error) {
+	if typ == "forecast" {
+		return NewForecast(opts), nil
+	}
+	return nil, fmt.Errorf("unsupported weather device %s", typ)
+}
+
+func SupportedDevices() devices.SupportedDevices {
+	return devices.SupportedDevices{
+		"forecast": NewDevice,
+	}
+}
+
+func SupportedControllers() devices.SupportedControllers {
+	return devices.SupportedControllers{
+		"weather.gov": NewController,
+	}
+}
 
 type ServiceConfig struct {
 	Refresh time.Duration `yaml:"refresh_interval"`
@@ -44,7 +71,7 @@ func (s *Service) SetNWSAPI(api *nws.API) {
 
 func (s *Service) Operations() map[string]devices.Operation {
 	return map[string]devices.Operation{
-		"forecasts": s.forecasts,
+		"forecast": s.forecasts,
 	}
 }
 
@@ -119,33 +146,26 @@ func (f *Forecast) ControlledBy() devices.Controller {
 
 func (f *Forecast) Conditions() map[string]devices.Condition {
 	return map[string]devices.Condition{
-		"maxCloudCover": f.MaxOpacity,
+		"cloud-cover":     f.Opacity,
+		"max-cloud-cover": f.MaxOpacity,
+		"min-cloud-cover": f.MinOpacity,
+		"mostly-sunny":    f.MostlySunny,
+		"partly-cloudy":   f.PartlyCloudy,
+		"partly-sunny":    f.PartlyCloudy,
+		"mostly-cloudy":   f.MostlyCloudy,
 	}
 }
 
 func (f *Forecast) ConditionsHelp() map[string]string {
 	return map[string]string{
-		"maxCloudCover": fmt.Sprintf("returns true if the cloud coverage is at most one of %v", argsValues),
+		"cloud-cover":     "returns the cloud coverage at the current time",
+		"max-cloud-cover": fmt.Sprintf("returns true if the cloud coverage is at most one of %v", argsValues),
+		"min-cloud-cover": fmt.Sprintf("returns true if the cloud coverage is at least one of %v", argsValues),
+		"mostly-sunny":    "returns true if the cloud coverage is at most mostly sunny",
+		"partly-sunny":    "returns true if the cloud coverage is exactly partly sunny/cloudy",
+		"partly-cloudy":   "returns true if the cloud coverage is exactly partly sunny/cloudy",
+		"mostly-cloudy":   "returns true if the cloud coverage is at least mostly cloudy",
 	}
-}
-
-func (f *Forecast) CloudCoverage(ctx context.Context, opts devices.OperationArgs) (nws.OpaqueCloudCoverage, error) {
-	if len(opts.Args) != 1 {
-		return nws.UnknownOpaqueCloudCoverage, fmt.Errorf("expected a time argument in RFC3339 format")
-	}
-	when, err := time.Parse(time.RFC3339, opts.Args[0])
-	if err != nil {
-		return nws.UnknownOpaqueCloudCoverage, fmt.Errorf("failed to parse time: %v", err)
-	}
-	fc, err := f.service.Forecasts(ctx, opts)
-	if err != nil {
-		return nws.UnknownOpaqueCloudCoverage, err
-	}
-	p, ok := fc.PeriodFor(when)
-	if !ok {
-		return nws.UnknownOpaqueCloudCoverage, fmt.Errorf("no forecast available for current time")
-	}
-	return p.OpaqueCloudCoverage, nil
 }
 
 var argsValues string
@@ -164,20 +184,83 @@ func init() {
 	argsValues = strings.Join(strs, ", ")
 }
 
-// Returns true if the cloud coverage is at most that specified by the argument.
-func (f *Forecast) MaxOpacity(ctx context.Context, opts devices.OperationArgs) (bool, error) {
+func (f *Forecast) opacity(ctx context.Context, opts devices.OperationArgs) (forecast, wanted nws.OpaqueCloudCoverage, err error) {
 	if len(opts.Args) != 1 {
-		return false, fmt.Errorf("expected an argument for cloud cover: one of %v", argsValues)
+		err = fmt.Errorf("expected an argument for cloud cover: one of %v", argsValues)
+		return
 	}
-	cc := opts.Args[0]
-	atMost := nws.CloudOpacityFromShortForecast(cc)
-	if atMost == nws.UnknownOpaqueCloudCoverage {
-		return false, fmt.Errorf("unknown cloud cover: %q not one of %v", cc, argsValues)
+	wanted = nws.CloudOpacityFromShortForecast(opts.Args[0])
+	if wanted == nws.UnknownOpaqueCloudCoverage {
+		err = fmt.Errorf("unknown cloud cover: %q not one of %v", opts.Args[0], argsValues)
+		return
 	}
-	opts.Args[0] = opts.Due.Format(time.RFC3339)
-	opc, err := f.CloudCoverage(ctx, opts)
+	fc, err := f.service.Forecasts(ctx, opts)
+	if err != nil {
+		return
+	}
+	if opts.Due.Equal(time.Time{}) {
+		opts.Due = time.Now().In(f.service.System().Location.TimeLocation)
+	}
+	p, ok := fc.PeriodFor(opts.Due)
+	if !ok {
+		err = fmt.Errorf("no forecast available for time: %v", opts.Due)
+		return
+	}
+	forecast = nws.CloudOpacityFromShortForecast(p.ShortForecast)
+	if forecast == nws.UnknownOpaqueCloudCoverage {
+		err = fmt.Errorf("unknown cloud cover in forecast: %q", p.ShortForecast)
+		return
+	}
+	return forecast, wanted, nil
+}
+
+func (f *Forecast) writeMsg(wr io.Writer, msg string) {
+	if wr != nil {
+		_, _ = wr.Write([]byte(msg))
+	}
+}
+
+// Opacity returns true if the cloud coverage is exactly that specified by the argument.
+func (f *Forecast) Opacity(ctx context.Context, opts devices.OperationArgs) (bool, error) {
+	fc, arg, err := f.opacity(ctx, opts)
 	if err != nil {
 		return false, err
 	}
-	return opc <= atMost, nil
+	f.writeMsg(opts.Writer, fmt.Sprintf("Opacity: forecast: %v, wanted: %v == %v\n", fc, fc, arg))
+	return fc == arg, nil
+}
+
+// MaxOpacity returns true if the cloud coverage is at most that specified by the argument.
+func (f *Forecast) MaxOpacity(ctx context.Context, opts devices.OperationArgs) (bool, error) {
+	fc, arg, err := f.opacity(ctx, opts)
+	if err != nil {
+		return false, err
+	}
+	f.writeMsg(opts.Writer, fmt.Sprintf("MaxOpacity: forecast: %v, wanted: %v <= %v\n", fc, fc, arg))
+	return fc <= arg, nil
+}
+
+// MinOpacity returns true if the cloud coverage is at most that specified by the argument.
+func (f *Forecast) MinOpacity(ctx context.Context, opts devices.OperationArgs) (bool, error) {
+	fc, arg, err := f.opacity(ctx, opts)
+	if err != nil {
+		return false, err
+	}
+	f.writeMsg(opts.Writer, fmt.Sprintf("MinOpacity: forecast: %v, wanted: %v >= %v\n", fc, fc, arg))
+	return fc >= arg, nil
+}
+
+func (f *Forecast) MostlySunny(ctx context.Context, opts devices.OperationArgs) (bool, error) {
+	opts.Args = []string{"Mostly Sunny"}
+	return f.MaxOpacity(ctx, opts)
+}
+
+func (f *Forecast) PartlyCloudy(ctx context.Context, opts devices.OperationArgs) (bool, error) {
+	opts.Args = []string{"Partly Sunny"}
+	return f.Opacity(ctx, opts)
+}
+
+func (f *Forecast) MostlyCloudy(ctx context.Context, opts devices.OperationArgs) (bool, error) {
+	opts.Args = []string{"Mostly Cloudy"}
+	return f.MinOpacity(ctx, opts)
 }

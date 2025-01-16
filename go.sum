@@ -33,12 +33,16 @@ cloudeng.io/webapi/clients/nws v0.0.0-20250115174215-4ad8f0a52a51 h1:DEzgh9x3bc9
 cloudeng.io/webapi/clients/nws v0.0.0-20250115174215-4ad8f0a52a51/go.mod h1:bjmaGE68MXZDriIUR4vVRXWlQLGq+32VK4J0ua1pr/0=
 cloudeng.io/webapi/clients/nws v0.0.0-20250115234730-220e0a6d154d h1:Zz4CfB7GUTbvF9grTeM4z+49G5WsCcNKF5CeWiMVp30=
 cloudeng.io/webapi/clients/nws v0.0.0-20250115234730-220e0a6d154d/go.mod h1:bjmaGE68MXZDriIUR4vVRXWlQLGq+32VK4J0ua1pr/0=
+cloudeng.io/webapi/clients/nws v0.0.0-20250116040431-a16229cf0935 h1:qv2lkV8OndDqt2Qyn9JXuWCzwz3uEX5ge2nLA6UNvqw=
+cloudeng.io/webapi/clients/nws v0.0.0-20250116040431-a16229cf0935/go.mod h1:bjmaGE68MXZDriIUR4vVRXWlQLGq+32VK4J0ua1pr/0=
 cloudeng.io/webapi/operations v0.0.0-20240326200628-ccb06fbdd668 h1:ETYk2nrF0bqKv+Lx5fJNEljev+jf/G4X4PGhwsmf2EM=
 cloudeng.io/webapi/operations v0.0.0-20240326200628-ccb06fbdd668/go.mod h1:MKGJvUTbVsIRgMy/DhFPVAue/zFLTp6UCdoiCNK41iI=
 cloudeng.io/webapi/operations v0.0.0-20250115163522-2e8054cafced h1:Y7V9wMeyuJwPs6vZN96/857lNhFdTFXVKYMq1FlgvlU=
 cloudeng.io/webapi/operations v0.0.0-20250115163522-2e8054cafced/go.mod h1:uGPvy9FlXotcdATf7+b2lZNGDVfRe1C7MqS3wBVGeq0=
 cloudeng.io/webapi/operations v0.0.0-20250115235233-c9333ec7ce00 h1:f6Gb2hWgGN6dajyNVwruivRRbIXnIRWymVD5xCE81dA=
 cloudeng.io/webapi/operations v0.0.0-20250115235233-c9333ec7ce00/go.mod h1:uGPvy9FlXotcdATf7+b2lZNGDVfRe1C7MqS3wBVGeq0=
+cloudeng.io/webapi/operations v0.0.0-20250116040431-a16229cf0935 h1:nBMi5vXrtWYkhifO1PpinT3pUCuodMou3A3HOl+D1Xc=
+cloudeng.io/webapi/operations v0.0.0-20250116040431-a16229cf0935/go.mod h1:uGPvy9FlXotcdATf7+b2lZNGDVfRe1C7MqS3wBVGeq0=
 cloudeng.io/webapi/webapitestutil v0.0.0-20250115163522-2e8054cafced h1:EMd0bCqObKJ/zGJhxjS+5niY18WSdFYcn29MyM/y6+0=
 cloudeng.io/webapi/webapitestutil v0.0.0-20250115163522-2e8054cafced/go.mod h1:cMF03lbZy2+oWkCUD3CPtKzxClTGjqbIyk2E/IMVQtA=
 github.com/cosnicolaou/automation v0.0.0-20250115011416-ec192d8af4dd h1:q52JyLZRhjC0fPunIKj4lhAKV2f9Ljapzna6CwvzTzo=
