@@ -20,7 +20,7 @@ import (
 
 func invokeCondition(t *testing.T, dev *weatherdev.Forecast, cond string, when time.Time, arg string) bool {
 	ctx := context.Background()
-	cover, err := dev.Conditions()[cond](ctx, devices.OperationArgs{
+	_, cover, err := dev.Conditions()[cond](ctx, devices.OperationArgs{
 		Due:  when,
 		Args: []string{arg},
 	})

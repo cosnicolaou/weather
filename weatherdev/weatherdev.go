@@ -81,17 +81,17 @@ func (s *Service) OperationsHelp() map[string]string {
 	}
 }
 
-func (s *Service) forecasts(ctx context.Context, opts devices.OperationArgs) error {
+func (s *Service) forecasts(ctx context.Context, opts devices.OperationArgs) (any, error) {
 	fc, err := s.Forecasts(ctx, opts)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	out, err := json.MarshalIndent(fc, "", "  ")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	_, err = opts.Writer.Write(out)
-	return err
+	return fc, err
 }
 
 func (s *Service) getAPI() *nws.API {
@@ -221,46 +221,46 @@ func (f *Forecast) writeMsg(wr io.Writer, msg string) {
 }
 
 // Opacity returns true if the cloud coverage is exactly that specified by the argument.
-func (f *Forecast) Opacity(ctx context.Context, opts devices.OperationArgs) (bool, error) {
+func (f *Forecast) Opacity(ctx context.Context, opts devices.OperationArgs) (any, bool, error) {
 	fc, arg, err := f.opacity(ctx, opts)
 	if err != nil {
-		return false, err
+		return nil, false, err
 	}
 	f.writeMsg(opts.Writer, fmt.Sprintf("Opacity: forecast: %v, wanted: %v == %v\n", fc, fc, arg))
-	return fc == arg, nil
+	return fc, fc == arg, nil
 }
 
 // MaxOpacity returns true if the cloud coverage is at most that specified by the argument.
-func (f *Forecast) MaxOpacity(ctx context.Context, opts devices.OperationArgs) (bool, error) {
+func (f *Forecast) MaxOpacity(ctx context.Context, opts devices.OperationArgs) (any, bool, error) {
 	fc, arg, err := f.opacity(ctx, opts)
 	if err != nil {
-		return false, err
+		return nil, false, err
 	}
 	f.writeMsg(opts.Writer, fmt.Sprintf("MaxOpacity: forecast: %v, wanted: %v <= %v\n", fc, fc, arg))
-	return fc <= arg, nil
+	return fc, fc <= arg, nil
 }
 
 // MinOpacity returns true if the cloud coverage is at most that specified by the argument.
-func (f *Forecast) MinOpacity(ctx context.Context, opts devices.OperationArgs) (bool, error) {
+func (f *Forecast) MinOpacity(ctx context.Context, opts devices.OperationArgs) (any, bool, error) {
 	fc, arg, err := f.opacity(ctx, opts)
 	if err != nil {
-		return false, err
+		return nil, false, err
 	}
 	f.writeMsg(opts.Writer, fmt.Sprintf("MinOpacity: forecast: %v, wanted: %v >= %v\n", fc, fc, arg))
-	return fc >= arg, nil
+	return fc, fc >= arg, nil
 }
 
-func (f *Forecast) MostlySunny(ctx context.Context, opts devices.OperationArgs) (bool, error) {
+func (f *Forecast) MostlySunny(ctx context.Context, opts devices.OperationArgs) (any, bool, error) {
 	opts.Args = []string{"Mostly Sunny"}
 	return f.MaxOpacity(ctx, opts)
 }
 
-func (f *Forecast) PartlyCloudy(ctx context.Context, opts devices.OperationArgs) (bool, error) {
+func (f *Forecast) PartlyCloudy(ctx context.Context, opts devices.OperationArgs) (any, bool, error) {
 	opts.Args = []string{"Partly Sunny"}
 	return f.Opacity(ctx, opts)
 }
 
-func (f *Forecast) MostlyCloudy(ctx context.Context, opts devices.OperationArgs) (bool, error) {
+func (f *Forecast) MostlyCloudy(ctx context.Context, opts devices.OperationArgs) (any, bool, error) {
 	opts.Args = []string{"Mostly Cloudy"}
 	return f.MinOpacity(ctx, opts)
 }
