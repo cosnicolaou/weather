@@ -63,7 +63,7 @@ func TestMaxCloudCoverage(t *testing.T) {
 		t.Fatalf("failed to get forecasts: %v", err)
 	}
 
-	dev := weatherdev.NewForecast(devices.Options{})
+	dev := weatherdev.NewForecast(devices.Options{Logger: logger})
 	dev.SetController(ws)
 
 	allArgs := []string{"sunny", "clear", "mostly clear", "mostly sunny", "partly cloudy",
