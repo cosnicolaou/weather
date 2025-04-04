@@ -126,10 +126,13 @@ type ForecastConfig struct{}
 type Forecast struct {
 	devices.DeviceBase[ForecastConfig]
 	service *Service
+	logger  *slog.Logger
 }
 
-func NewForecast(_ devices.Options) *Forecast {
-	return &Forecast{}
+func NewForecast(opts devices.Options) *Forecast {
+	return &Forecast{
+		logger: opts.Logger.With("protocol", "weather.gov", "device", "forecast"),
+	}
 }
 
 func (f *Forecast) Implementation() any {
@@ -217,6 +220,9 @@ func (f *Forecast) opacity(ctx context.Context, opts devices.OperationArgs) (for
 func (f *Forecast) writeMsg(wr io.Writer, msg string) {
 	if wr != nil {
 		_, _ = wr.Write([]byte(msg))
+	}
+	if f.logger != nil {
+		f.logger.Info("forecast", "details", msg)
 	}
 }
 
