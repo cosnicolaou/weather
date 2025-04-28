@@ -9,11 +9,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log/slog"
 	"strings"
 	"sync"
 	"time"
 
+	"cloudeng.io/logging/ctxlog"
 	"cloudeng.io/webapi/clients/nws"
 	"github.com/cosnicolaou/automation/devices"
 )
@@ -123,12 +123,10 @@ type ForecastConfig struct{}
 type Forecast struct {
 	devices.DeviceBase[ForecastConfig]
 	service *Service
-	//logger  *slog.Logger
 }
 
 func NewForecast(_ devices.Options) *Forecast {
 	return &Forecast{}
-	//logger: opts.Logger.With("protocol", "weather.gov", "device", "forecast"),
 }
 
 func (f *Forecast) Implementation() any {
@@ -213,12 +211,11 @@ func (f *Forecast) opacity(ctx context.Context, opts devices.OperationArgs) (for
 	return forecast, wanted, nil
 }
 
-func (f *Forecast) writeMsg(ctx context.Context, wr io.Writer, msg string) {
+func (f *Forecast) writeMsg(ctx context.Context, wr io.Writer, msg string, val bool) {
 	if wr != nil {
 		_, _ = wr.Write([]byte(msg))
 	}
-	logger := devices.LoggerFromContext(ctx)
-	logger.Log(ctx, slog.LevelInfo, "weather forecast", "protocol", "weather.gov", "forecast", msg)
+	ctxlog.Info(ctx, "weather forecast", "protocol", "weather.gov", "forecast", msg, "result", val)
 }
 
 // Opacity returns true if the cloud coverage is exactly that specified by the argument.
@@ -227,7 +224,7 @@ func (f *Forecast) Opacity(ctx context.Context, opts devices.OperationArgs) (any
 	if err != nil {
 		return nil, false, err
 	}
-	f.writeMsg(ctx, opts.Writer, fmt.Sprintf("Opacity: forecast: %v, wanted: %v == %v\n", fc, fc, arg))
+	f.writeMsg(ctx, opts.Writer, fmt.Sprintf("Opacity: forecast: %v, wanted: %v == %v\n", fc, fc, arg), fc == arg)
 	return fc, fc == arg, nil
 }
 
@@ -237,7 +234,7 @@ func (f *Forecast) MaxOpacity(ctx context.Context, opts devices.OperationArgs) (
 	if err != nil {
 		return nil, false, err
 	}
-	f.writeMsg(ctx, opts.Writer, fmt.Sprintf("MaxOpacity: forecast: %v, wanted: %v <= %v\n", fc, fc, arg))
+	f.writeMsg(ctx, opts.Writer, fmt.Sprintf("MaxOpacity: forecast: %v, wanted: %v <= %v\n", fc, fc, arg), fc <= arg)
 	return fc, fc <= arg, nil
 }
 
@@ -247,7 +244,7 @@ func (f *Forecast) MinOpacity(ctx context.Context, opts devices.OperationArgs) (
 	if err != nil {
 		return nil, false, err
 	}
-	f.writeMsg(ctx, opts.Writer, fmt.Sprintf("MinOpacity: forecast: %v, wanted: %v >= %v\n", fc, fc, arg))
+	f.writeMsg(ctx, opts.Writer, fmt.Sprintf("MinOpacity: forecast: %v, wanted: %v >= %v\n", fc, fc, arg), fc >= arg)
 	return fc, fc >= arg, nil
 }
 

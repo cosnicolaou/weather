@@ -6,8 +6,6 @@ package weatherdev_test
 
 import (
 	"context"
-	"log/slog"
-	"strings"
 	"testing"
 	"time"
 
@@ -50,11 +48,7 @@ func TestMaxCloudCoverage(t *testing.T) {
 		},
 	}
 
-	logOut := &strings.Builder{}
-	logger := slog.New(slog.NewJSONHandler(logOut, nil))
-	ws := weatherdev.NewService(devices.Options{
-		Logger: logger,
-	})
+	ws := weatherdev.NewService(devices.Options{})
 	ws.SetSystem(sys)
 	ws.SetNWSAPI(api)
 
@@ -63,7 +57,7 @@ func TestMaxCloudCoverage(t *testing.T) {
 		t.Fatalf("failed to get forecasts: %v", err)
 	}
 
-	dev := weatherdev.NewForecast(devices.Options{Logger: logger})
+	dev := weatherdev.NewForecast(devices.Options{})
 	dev.SetController(ws)
 
 	allArgs := []string{"sunny", "clear", "mostly clear", "mostly sunny", "partly cloudy",
