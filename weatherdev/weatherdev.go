@@ -125,7 +125,7 @@ type Forecast struct {
 	service *Service
 }
 
-func NewForecast(opts devices.Options) *Forecast {
+func NewForecast(_ devices.Options) *Forecast {
 	return &Forecast{}
 }
 
